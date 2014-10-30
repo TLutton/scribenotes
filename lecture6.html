@@ -61,39 +61,50 @@
 
 
                 <h4> Task: rotate a log file </h4>
-                    log       <= apache writes to this (today's log), constantly g<br>
+                    Our goal is to keep a log of all of Apache's activity.  In order to do this, we must keep two files, log and oldlog.  log contains all of the information for the current day while oldlog contains a copy of the log file from the previous day.  <br>
+                    <br>
+                    log       <= apache writes to this endlessly<br>
                     oldlog    <= yesterday's log<br>
                     <br>
-                    at midnight:<br>
-                        $ mv log old log<br>
-                        $ >log<br>
+                    The tricky part (most prone to error) occurs when log must be transitioned to oldlog at midnight. <br>
+                    <pre>
+    $ mv log old log
+    $ >log
+                    </pre>
+                    However, we need some way of telling Apache to close/reopen its log file.
+                    <pre>
+i.e.
+    close(fd);
+    fd = open("log", O_WRONLY ...);
+                    </pre>
+                    Right now, our writes to the log look like this:
+                    <pre>
+    write(fd, "good stuff\n", 11);
+    write(fd, "more good stuff\n", 16);
+                    </pre>
+                    Can you see the problem with this attempt? Hint: Race condition<br>
                     <br>
-                    now: <br>
-                    write(fd, "good stuff\n", 11);<br>
-                    write(fd, "more good stuff\n", 16);<br>
-                    <br>
-                    change:<br>
-                    checklog();<br>
-                    write(fd, "good stuff\n", 11);<br>
-                    checklog();<br>
-                    write(fd, "more good stuff\n", 16);<br>
-                    <br>
+                    With this naive writing to the log file, it is possible that the current time is midnight and the log file's location is being changed.  We need to add some sort of check to make sure that the log is being written to the correct place. Here's the change:
+                    <pre>
+    checklog();
+    write(fd, "good stuff\n", 11);
+    checklog();
+    write(fd, "more good stuff\n", 16);
+                    </pre>
+                    with checklog() defined as follows:
                     <pre>
                         <code>
-int checklog(void) {
-    if(stat("log", &st) < 0 || st.st_size == 0) {
-        close(fd);
-        fd = open("log",...);
+    int checklog(void) {
+        if(stat("log", &st) < 0 || st.st_size == 0) {
+            close(fd);
+            fd = open("log",...);
+        }
     }
-}
                         </code>
                     </pre>
+                    Right now Apache has to execute two system calls every time it wants to write to the log.  This is a very inelegant way to solve the problem.  This <a href="http://en.wikipedia.org/wiki/Polling_(computer_science)"><i>polling</i></a> approach is also very slow.<br>
                     <br>
-                    Now there are two system calls every time instead of one every time that apache writes.  This is very SLOW. <br>
-                    <br>
-                    This approach: <i>POLLING</i><br>
-                    <br>
-                    What would happen if the power failed? We would have the same issue. <br>
+                    More trouble: What would happen if the power failed? We would have the same issue. <br>
                     <br>
 
                 <h4>Signals</h4>
