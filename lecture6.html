@@ -332,23 +332,21 @@ example:
     unlink("foo");
                     </code>
                 </pre>
-                <h4>Threads</h4><br>
-                <br>
-                Threads are like light weight processes.
+				The general rule of thumb for race conditions is to assume that you wrote it wrong.  That is the case more often than not. 
+                <h4>Threads</h4>
+                <a href="http://en.wikipedia.org/wiki/Thread_(computing)">Threads</a> are like light weight processes.  Why do we use them? Performance!
                 <ul>
                     <li>we want a lot of them</li>
                     <li>we want fast context-switching</li>
-                    <li>threads are not insulated from each other (shared memory) -> faster communication</li>
+                    <li>threads are not insulated from each other (threads utilize shared memory) which gives faster communication</li>
                 </ul>
-                <br>
-                Goal = Performance!<br>
                 Pros and Cons:
                 <pre>
 + performance
 - simplicity (can be very complicated and lead to race conditions)
 - reliability
                 </pre>
-                Usually you can get two out of the three ^^.  You generally have to sacrifice simplicity. <br>
+                Usually you can get two out of the three to work.  Generally programmers will sacrifice simplicity in order to get performance and reliability. <br>
                 <br>
                 <table>
                     <body>
