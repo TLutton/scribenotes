@@ -40,10 +40,25 @@
                     <li>fd = open("/dev/usb/dr1"...) read(fd, ...) *unplug* read(fd, ...) // return -1</li>
                 </ul>
                 <h4>Race Conditons:</h4>
-                (cat a & cabt b) > outfile // DIAGRAM <br>
-                (cat > a & cat > b) < infile // DIAGRAM <br>
-                (cat a & cat b) | (cat > c & cat > d) <br>
-                Behavior depends on timing, which is variable => hard to debug <br>
+                <ul>
+                    <li>(cat a & cabt b) > outfile // DIAGRAM</li>
+                    This gives us many possible outputs: <br>
+                    <pre>
+    a\n    (bad: output discarded)
+    b\n    (bad: output discarded)
+    a\nb\n (ok)
+    b\na\n (ok)
+    ab\n\n (bad: interleaved)
+                    </pre>
+                    It should be noted that "small writes" (i.e. <= 2048 bytes) are done atomically while calls to the write system call with a large output have the potential to be interleaved. <br><br>
+                    <li>(cat > a & cat > b) < infile // DIAGRAM </li>
+                    <pre>
+    |a| + |b| = |infile|
+                    </pre>
+                    <li>(cat a & cat b) | (cat > c & cat > d) </li> <br>
+                    This would create a lot of race conditions since the behavior largely depends on timing which means that it is variable and therefore very difficult to debug.  The best way to debug a race condition is to not create one.  In this lecture we will be examining ways of writing code in order to avoid race conditions and write safe code. 
+                </ul>
+
 
                 <h4> Task: rotate a log file </h4>
                     log       <= apache writes to this (today's log), constantly g<br>
