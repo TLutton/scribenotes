@@ -219,8 +219,66 @@ int pthread_sigmask(int hav,
                 // while you're doing something important, you won't be bothered by a signal.<br>
                 <br>
                 Let's take a look at a dangerous situation that can be caused by sending a signal when the CPU is executing sensitive instructions.<br>
+                <br>
+                gzip foo => foo.gz<br>
+                What happens when you press ^C?<br>
+                <br>
+                <pre>
+                    <code>
+    int in = open("foo", O_RDONLY);
+    int out = open("foo.gz", OWRONLY);
+    magiczip(in, out);
+    close(in);
+    close(out);
+    unlink("foo");
+                    </code>
+                </pre>
+                If the process gets interrupted, we want either to orginal foo to be restored or the completely zipped foo.gz.  What we don't want is some interleaved output or to lose all of our data in the case of a signal. <br>
+                <br>
+                One fix:<br>
+                <pre>
+                    <code>
+    signal(SIGINT, SIG_IGN); // but then we can't use ^C
+    int in = open("foo", O_RDONLY);
+    int out = open("foo.gz", O_WRONLY);
+    magiczip(in, out);
+    close(in);
+    close(out);
+    unlink("foo");
+                    </code>
+                </pre>
+                Better fix:<br>
+                <pre>
+                    <code>
+    signal(SIGINT, cleanup);
+    int in = open("foo", O_RDONLY);
+    int out = open("foo.gz", O_WRONLY);
+    magiczip(in, out);
+    close(in);
+    close(out);
+    unlink("foo"); // but what if we exit after this line? We would lose both foo and foo.gz
 
-
+    void cleanup(int sig) {
+        unlink("foo.gz");
+        _exit(97);
+    }
+                    </code>
+                </pre>
+                A suggested solution to this problem was to set an integer flag, but that would most likely be optimized out by the compiler. <br>
+                <br>
+                Better still:<br>
+                <pre>
+                    <code>
+    signal(SIGINT, cleanup);
+    int in = open("foo", O_RDONLY);
+    int out = open("foo.gz", O_WRONLY);
+    magiczip(in, out);
+    close(in);
+    close(out);
+    pthread sigmask(SIG_BLOCK);
+    unlink("foo");
+                    </code>
+                </pre>
 
 
 
