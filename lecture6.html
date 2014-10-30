@@ -81,7 +81,57 @@
                     <br>
 
                 <h4>Signals</h4>
-                
+                Let's start this section with an analogy.<br>
+                signals : processes :: traps : hardware.<br>
+                That's right, signals work for processes in the same way that traps work for hardware.<br>
+                <br>
+                traps - after any machine instruction, the equivalent of INT 0x80 can occur.<br>
+                <br>
+                signals - the kernel can take control and:<br>
+                <ul>
+                    <li>terminate processes</li>
+                    <li>continue as before</li>
+                    <li>cause program to call one of your functions with an asynchronous function call</li>
+                </ul>
+                Using signals is a good way to avoid wasting CPU resources by polling.<br>
+                <br>
+                <table>
+                    <body>
+                        <tr>
+                            <td><b>Signal</b></td><td><b>Meaning</b></td><td>Additional Info</td>
+                        </tr>
+                        <tr>
+                            <td>SIGINT</td><td>interrupt ^C</td><td> <= uncooperative process</td>
+                        </tr>
+                        <tr>
+                            <td>SIGHUP</td><td>hang up</td><td><= unexpected loss of resources</td>
+                        </tr>
+                        <tr>
+                            <td>SIGSEGV</td><td>segmentation violations</td>
+                        </tr>
+                        <tr>
+                            <td>SIGBUS</td><td>bus error</td>
+                        </tr>
+                        <tr>
+                            <td>SIGFPE</td><td>floating point exception</td><td> almost impossible to see nowadays</td>
+                        </tr>
+                        <tr>
+                            <td>SIGPIPE</td><td>writing to pipe with no readers</td>
+                        </tr>
+                        <tr>
+                            <td>SIGKILL</td><td>immediately makes process die</td>
+                        </tr>
+                        <tr>
+                            <td>SIGALRM</td><td>alarm clock</td>
+                        </tr>
+                        <tr>
+                            <td>SIGXCPU</td><td>CPU quota exceeded limit</td>
+                        </tr>
+                        <tr>
+                            <td>SIGXFS2</td><td>file size</td>
+                        </tr>
+                    </body>
+                </table>
             </p>
             
 
