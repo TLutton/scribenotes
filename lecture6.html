@@ -64,12 +64,12 @@
                     <br>
                     <pre>
                         <code>
-                        int checklog(void) {
-                            if(stat("log", &st) < 0 || st.st_size == 0) {
-                                close(fd);
-                                fd = open("log",...);
-                            }
-                        }
+int checklog(void) {
+    if(stat("log", &st) < 0 || st.st_size == 0) {
+        close(fd);
+        fd = open("log",...);
+    }
+}
                         </code>
                     </pre>
                     <br>
@@ -98,7 +98,7 @@
                 <table>
                     <body>
                         <tr>
-                            <td><b>Signal</b></td><td><b>Meaning</b></td><td>Additional Info</td>
+                            <td><b>Signal</b></td><td><b>Meaning</b></td><td><b>Additional Info</b></td>
                         </tr>
                         <tr>
                             <td>SIGINT</td><td>interrupt ^C</td><td> <= uncooperative process</td>
@@ -132,6 +132,101 @@
                         </tr>
                     </body>
                 </table>
+                <pre>
+                    <code>
+int kill(pid_t pid, int sig); // send signal to process
+    // can send only to own processes on lnxsrv
+
+pid_t p = fork();
+if(p > 0) {
+    sleep(30);
+    kill(p, SIGINT);
+}
+wait_pid(p, ...); // weird exit status > 127
+                    </code>
+                </pre>
+                <pre>
+                    <code>
+typedef void (*sighandler_t)(int);
+sighandler_t signal(int, sighandler_t); // int is sig num, returns old handler
+                    </code>
+                    <br>
+example:
+                    <code>
+int main(void) {
+    signal(SIGALRM, bing); // set up handler before action that provokes signal
+    alarm(30);
+    // really complicated main code
+    return 0;
+}
+void bing(int sig) {
+    printf("BING! %d\n", sig);
+    exit(27);
+}
+                    </code>
+                </pre>
+                But there's a problem! What if the signal arrives when printf is active? This will result in undefined behavior.<br>
+                <pre>
+    stack:
+        printf
+        bing
+        delicate stuff
+        printf
+        main
+                </pre>
+                Solution? Don't call printf or exit! Stick to safe function calls in the handler.<br>
+                <br>
+                asynchronus_safe functions:
+                <ul>
+                    <li>write</li>
+                    <li>read</li>
+                    <li>close</li>
+                    <li>_exit</li>
+                </ul>
+                All of the above functions must go through the kernel. <br>
+                <br>
+                Don't use:
+                <ul>
+                    <li>stdio (printf, fopen, fclose)</li>
+                    <li>malloc, free</li>
+                    <li>any function that looks at shared memory</li>
+                </ul>
+                <br>
+                Safe version:
+                <pre>
+                    <code>
+void bing(int sig) {
+    write(1, "BING!\n", 6);
+    _exit(27);
+}
+                    </code>
+                </pre>
+                <br>
+                A couple of more signals:<br>
+                <ul>
+                    <li>SIG_DFL</li>
+                    <li>SIG_IGN <= discard signals</li>
+                </ul>
+                <br>
+                <pre>
+                    <code>
+int pthread_sigmask(int hav,
+                    sigset_t const * restrict set,
+                    sigset_t * restrict oset);
+                    </code>
+                </pre>
+                1st param: SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK<br>
+                // while you're doing something important, you won't be bothered by a signal.<br>
+                <br>
+                Let's take a look at a dangerous situation that can be caused by sending a signal when the CPU is executing sensitive instructions.<br>
+
+
+
+
+
+
+
+
             </p>
             
 
