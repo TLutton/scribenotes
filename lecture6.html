@@ -279,12 +279,42 @@ int pthread_sigmask(int hav,
     unlink("foo");
                     </code>
                 </pre>
-
-
-
-
-
-
+                <h4>Threads</h4><br>
+                <br>
+                Threads are like light weight processes.
+                <ul>
+                    <li>we want a lot of them</li>
+                    <li>we want fast context-switching</li>
+                    <li>threads are not insulated from each other (shared memory) -> faster communication</li>
+                </ul>
+                <br>
+                Goal = Performance!<br>
+                Pros and Cons:
+                <pre>
++ performance
+- simplicity (can be very complicated and lead to race conditions)
+- reliability
+                </pre>
+                Usually you can get two out of the three ^^.  You generally have to sacrifice simplicity. <br>
+                <br>
+                <table>
+                    <body>
+                        <tr>
+                            <td><b>Threads</b></td><td></td><td></td><td><b>Processes</b></td>
+                        </tr>
+                        <tr>
+                            <td>pthread_create</td><td></td><td></td><td>fork (or posix_spawn)</td>
+                        </tr>
+                        <tr>
+                            <td>pthread_join</td><td></td><td></td><td>waitpid</td>
+                        </tr>
+                        <tr>
+                            <td>pthread_exit</td><td></td><td></td><td>_exit</td>
+                        </tr>
+                    </body>
+                </table>
+                    Note: Threads share memory while processes are isolated.
+                    <br><br><br><br><br><br><br><br><br><br>
             </p>
             
 
