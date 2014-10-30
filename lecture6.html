@@ -27,11 +27,12 @@
         <tr><td>
 
             <h1>CS 111</h1>
-            <h3>Lecture 6 Scribe Notes</h3>
+            <h2>Lecture 6 Scribe Notes</h2>
             <i>by Thomas Lutton & Nicholas Yee</i>
 
-            <h2>What can go wrong? (cont'd)</h2>
+            <h3>What can go wrong?</h3>
             <p>
+                (cont'd discussion of the hazards of file descriptors and opening/closing pipe from the end of lecture 5)
                 <h4>File descriptors:</h4>
                 <ul>
                     <li>close(-1) close(39) == 1 errno == EBADF</li>
@@ -81,13 +82,16 @@ int checklog(void) {
                     <br>
 
                 <h4>Signals</h4>
+
                 Let's start this section with an analogy.<br>
+                <br>
                 signals : processes :: traps : hardware.<br>
+                <br>
                 That's right, signals work for processes in the same way that traps work for hardware.<br>
                 <br>
-                traps - after any machine instruction, the equivalent of INT 0x80 can occur.<br>
+                <a href="http://en.wikipedia.org/wiki/Trap_(computing)">traps</a> - after any machine instruction, the equivalent of INT 0x80 can occur.<br>
                 <br>
-                signals - the kernel can take control and:<br>
+                <a href="http://unixhelp.ed.ac.uk/CGI/man-cgi?signal+7">signals</a> - the kernel can take control and:<br>
                 <ul>
                     <li>terminate processes</li>
                     <li>continue as before</li>
