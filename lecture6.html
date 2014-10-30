@@ -31,6 +31,58 @@
 			<i>by Thomas Lutton & Nicholas Yee</i>
 
 			<h2>What can go wrong? (cont'd)</h2>
+			<p>
+				<h4>File descriptors:</h4>
+				<ul>
+					<li>close(-1) close(39) == 1 errno == EBADF</li>
+					<li>fd = open(...) read(fd)... fd leak</li>
+					<li>fd = open("/dev/usb/dr1"...) read(fd, ...) *unplug* read(fd, ...) // return -1</li>
+				</ul>
+				<h4>Race Conditons:</h4>
+				(cat a & cabt b) > outfile // DIAGRAM <br>
+				(cat > a & cat > b) < infile // DIAGRAM <br>
+				(cat a & cat b) | (cat > c & cat > d) <br>
+				Behavior depends on timing, which is variable => hard to debug <br>
+
+				<h4> Task: rotate a log file </h4>
+					log       <= apache writes to this (today's log), constantly g<br>
+					oldlog    <= yesterday's log<br>
+					<br>
+					at midnight:<br>
+					    $ mv log old log<br>
+					    $ >log<br>
+					<br>
+					now: <br>
+					write(fd, "good stuff\n", 11);<br>
+					write(fd, "more good stuff\n", 16);<br>
+					<br>
+					change:<br>
+					checklog();<br>
+					write(fd, "good stuff\n", 11);<br>
+					checklog();<br>
+					write(fd, "more good stuff\n", 16);<br>
+					<br>
+					<pre>
+						<code>
+						int checklog(void) {
+						    if(stat("log", &st) < 0 || st.st_size == 0) {
+						        close(fd);
+						        fd = open("log",...);
+						    }
+						}
+						</code>
+					</pre>
+					<br>
+					Now there are two system calls every time instead of one every time that apache writes.  This is very SLOW. <br>
+					<br>
+					This approach: <i>POLLING</i><br>
+					<br>
+					What would happen if the power failed? We would have the same issue. <br>
+					<br>
+
+				<h4>Signals</h4>
+
+			</p>
 			
 
 </BODY>
