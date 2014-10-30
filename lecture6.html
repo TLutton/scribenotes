@@ -84,7 +84,7 @@ i.e.
                     </pre>
                     Can you see the problem with this attempt? Hint: Race condition<br>
                     <br>
-                    With this naive writing to the log file, it is possible that the current time is midnight and the log file's location is being changed.  We need to add some sort of check to make sure that the log is being written to the correct place. Here's the change:
+                    With this naive writing to the log file, it is possible that the current time is midnight and the log file's location is being changed (meaning that subsequent writes will write into oldlog instead of log).  We need to add some sort of check to make sure that the log is being written to the correct place. Here's the change:
                     <pre>
     checklog();
     write(fd, "good stuff\n", 11);
@@ -146,13 +146,13 @@ i.e.
                             <td>SIGFPE</td><td>floating point exception</td><td> almost impossible to see nowadays</td>
                         </tr>
                         <tr>
-                            <td>SIGPIPE</td><td>writing to pipe with no readers</td>
+                            <td>SIGPIPE</td><td>writing to pipe w/ no readers</td>
                         </tr>
                         <tr>
-                            <td>SIGKILL</td><td>immediately makes process die</td>
+                            <td>SIGKILL</td><td>immediately ends process</td>
                         </tr>
                         <tr>
-                            <td>SIGALRM</td><td>alarm clock</td>
+                            <td>SIGALRM</td><td>alarm clock</td><td>put a time limit on your own process</td>
                         </tr>
                         <tr>
                             <td>SIGXCPU</td><td>CPU quota exceeded limit</td>
@@ -162,17 +162,30 @@ i.e.
                         </tr>
                     </body>
                 </table>
+                <br>
+                Brief aside on why it is very rare (borderlined impossible) to see a SIGFPE:
+                <ul>
+                    <li>programmers were embarrassed and frustrated by receiving SIGFPE</li>
+                    <li>told hardware designers to make systems where floating point exceptions would not occur</li>
+                    <li>hardware designers added handling such as INF-INF=NaN instead of triggering SIGFPE</li>
+                    <li>still one way to get SIGFPE:</li>
+                    <pre>
+    int x = INT_MIN / (-1);
+                    </pre>
+                </ul>
+                <h4>Some more information about kill</h4>
+                Kill is very useful.  If a process is behaving poorly, it can be killed in order to free the CPU to run meaningful processes.  An example of how kill might be used is seen below. 
                 <pre>
                     <code>
-int kill(pid_t pid, int sig); // send signal to process
-    // can send only to own processes on lnxsrv
+    int kill(pid_t pid, int sig); // send signal to process
+        // can send only to own processes on lnxsrv
 
-pid_t p = fork();
-if(p > 0) {
-    sleep(30);
-    kill(p, SIGINT);
-}
-wait_pid(p, ...); // weird exit status > 127
+    pid_t p = fork();
+    if(p > 0) {
+        sleep(30);
+        kill(p, SIGINT);
+    }
+    wait_pid(p, ...); // weird exit status > 127
                     </code>
                 </pre>
                 <pre>
