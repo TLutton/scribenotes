@@ -173,7 +173,7 @@ i.e.
     int x = INT_MIN / (-1);
                     </pre>
                 </ul>
-                <h4>Some more information about kill</h4>
+                <h4>Some more information about kill:</h4>
                 Kill is very useful.  If a process is behaving poorly, it can be killed in order to free the CPU to run meaningful processes.  An example of how kill might be used is seen below. 
                 <pre>
                     <code>
@@ -188,27 +188,40 @@ i.e.
     wait_pid(p, ...); // weird exit status > 127
                     </code>
                 </pre>
+                <h4>Typedef of a Signal Handler</h4>
                 <pre>
                     <code>
-typedef void (*sighandler_t)(int);
-sighandler_t signal(int, sighandler_t); // int is sig num, returns old handler
-                    </code>
-                    <br>
-example:
-                    <code>
-int main(void) {
-    signal(SIGALRM, bing); // set up handler before action that provokes signal
-    alarm(30);
-    // really complicated main code
-    return 0;
-}
-void bing(int sig) {
-    printf("BING! %d\n", sig);
-    exit(27);
-}
+    typedef void (*sighandler_t)(int); // pointer to function that takes int & returns void
+
+    sighandler_t signal(int, sighandler_t); // int is sig num, returns old handler
                     </code>
                 </pre>
-                But there's a problem! What if the signal arrives when printf is active? This will result in undefined behavior.<br>
+                The signal handler takes an int & the new handler and returns the old signal handler.
+                <pre>
+example:
+                    <code>
+    int main(void) {
+        signal(SIGALRM, bing); // set up handler before action that provokes signal
+        alarm(30);
+        // really complicated main code
+        return 0;
+    }
+                    </code>
+                </pre>
+                How is our initial implementation of the bing sighandler?
+                <pre>
+                    <code>
+    void bing(int sig) {
+        printf("BING! %d\n", sig);
+        exit(27);
+    }
+                    </code>
+                </pre>
+                There are some <b>major</b> problems with this handler. What if the signal arrives when printf is active? This is very dangerous and will result in undefined behavior.
+                <ul>
+                    <li>signal could arrive while printf is being called. printf is not safe when called 'recursively'</li>
+                    <li>don't call exit.  Exit flushes I/O buffers... could drop core. </li>
+                </ul>
                 <pre>
     stack:
         printf
@@ -217,9 +230,9 @@ void bing(int sig) {
         printf
         main
                 </pre>
-                Solution? Don't call printf or exit! Stick to safe function calls in the handler.<br>
+                Solution? Don't call printf or exit! Stick to safe things... AKA <a href="https://www.securecoding.cert.org/confluence/display/seccode/BB.+Definitions#BB.Definitions-asynchronous-safefunction">asynchronous-safe functions</a>.<br>
                 <br>
-                asynchronus_safe functions:
+                A few asynchronus_safe functions:
                 <ul>
                     <li>write</li>
                     <li>read</li>
@@ -237,14 +250,11 @@ void bing(int sig) {
                 <br>
                 Safe version:
                 <pre>
-                    <code>
-void bing(int sig) {
-    write(1, "BING!\n", 6);
-    _exit(27);
-}
-                    </code>
+    void bing(int sig) {
+        write(1, "BING!\n", 6);
+        _exit(27);
+    }
                 </pre>
-                <br>
                 A couple of more signals:<br>
                 <ul>
                     <li>SIG_DFL</li>
@@ -253,9 +263,9 @@ void bing(int sig) {
                 <br>
                 <pre>
                     <code>
-int pthread_sigmask(int hav,
-                    sigset_t const * restrict set,
-                    sigset_t * restrict oset);
+    int pthread_sigmask(int hav,
+                        sigset_t const * restrict set,
+                        sigset_t * restrict oset);
                     </code>
                 </pre>
                 1st param: SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK<br>
