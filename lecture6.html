@@ -42,7 +42,8 @@
                 </ul>
                 <h4>Race Conditons:</h4>
                 <ul>
-                    <li>(cat a & cabt b) > outfile // DIAGRAM</li>
+                    <li>(cat a & cabt b) > outfile</li>
+					<center><img src="output_race_condition.png"></center>
                     This gives us many possible outputs: <br>
                     <pre>
     a\n    (bad: output discarded)
@@ -51,8 +52,9 @@
     b\na\n (ok)
     ab\n\n (bad: interleaved)
                     </pre>
-                    It should be noted that "small writes" (i.e. <= 2048 bytes) are done atomically while calls to the write system call with a large output have the potential to be interleaved. <br><br>
-                    <li>(cat > a & cat > b) < infile // DIAGRAM </li>
+                    It should be noted that "small writes" (i.e. <= 2048 bytes) are done atomically while writes with a large output have the potential to be interleaved.  This would not happen in our simple example, but could become a possibility in other applications. <br><br>
+                    <li>(cat > a & cat > b) < infile</li>
+					<center><img src="input_race_condition.png"></center>
                     <pre>
     |a| + |b| = |infile|
                     </pre>
@@ -261,22 +263,8 @@ example:
                     <li><a href="http://en.cppreference.com/w/cpp/utility/program/SIG_strategies">SIG_DFL</a></li>
                     <li>SIG_IGN <= discard signals</li>
                 </ul>
-                <br>
-                <pre>
-                    <code>
-    int pthread_sigmask(int how,
-                        sigset_t const * restrict set,
-                        sigset_t * restrict oset);
-                    </code>
-                </pre>
-                Parameters:
-                <ul>
-                    <li>how: handles altering of signal that it intercepts. i.e. how = {SIG_BLOCK or SIG_UNBLOCK or SIG_SETMASK} </li>
-					<li>set: gets the old signal and combines values to figure what the new set will be</li>
-					<li>oset: pointer to RO signal set</li>
-                </ul>
-                // while you're doing something important, you won't be bothered by a signal.<br>
-                <br>
+				<br>
+				<h4>Example of Signal Handling with gzip</h4>
                 Let's take a look at a dangerous situation that can be caused by sending a signal when the CPU is executing our sensitive gzip command.<br>
                 <br>
                 gzip foo => foo.gz
@@ -352,6 +340,23 @@ example:
                     </code>
                 </pre>
 				Using a pthread_sigmask blocks signals that are received during critical sections of code.  When the critical code is done executing, it restores the mask to its previous value. <br>
+				
+				<h4> pthread_sigmask </h4>
+				<pre>
+                    <code>
+    int pthread_sigmask(int how,
+                        sigset_t const * restrict set,
+                        sigset_t * restrict oset);
+                    </code>
+                </pre>
+                Parameters:
+                <ul>
+                    <li>how: handles altering of signal that it intercepts. i.e. how = {SIG_BLOCK or SIG_UNBLOCK or SIG_SETMASK} </li>
+					<li>set: gets the old signal and combines values to figure what the new set will be</li>
+					<li>oset: pointer to RO signal set</li>
+                </ul>
+                // while you're doing something important, you won't be bothered by a signal.<br>
+                <br>
 				<br>
 				Note: The general rule of thumb for race conditions is to assume that you wrote it wrong.  That is the case more often than not. 
                 <h4>Threads</h4>
