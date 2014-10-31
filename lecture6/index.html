@@ -43,12 +43,17 @@
                 <ul>
                     <li>close(-1) [some time passes] close(39) == 1 errno == EBADF</li>
                 </ul>
-                    In this example, close is called on the same process id.  close(-1) closes any open process which could have included process 39. The subsequent close call would return in error and set the errno flag to EBADF
+                    In this example, close is called twice on the same process id.  close(-1) closes any open process which could have included process 39. The subsequent close call would return in error and set the errno flag to EBADF
                 <ul>
                     <li>fd = open(...) read(fd)... fd leak</li>
+                </ul>
+                    This example forgets an important part of file reading... Closing the file when you're done with it. By not closing the file, there is an fd leak. File descriptor leaks are bad because the computer has a limited amount of file descriptors.  Like memory, if you allow it to leak, you could eventually run out. 
+                <ul>    
                     <li>fd = open("/dev/usb/dr1"...) read(fd, ...) *unplug* read(fd, ...) // return -1</li>
                 </ul>
-
+                    As you can see from the path within the above open call, we're opening a USB device.  What happens if the USB key is unplugged and then you try and read from it again? read will return -1 and your program may not have implemented a graceful recovery tactic from this situation.<br>
+                    <br>
+                    There are many more errors that can be caused by improper usage of file descriptors.  It is important to remember that file descriptors, much like memory, are a limited and tricky resource and certain procedures must be followed in order to write correct and safe code. 
                 <h4>Race Conditons:</h4>
                 
                 <ul>
