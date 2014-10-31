@@ -43,7 +43,7 @@
                 <ul>
                     <li>close(-1) [some time passes] close(39) == 1 errno == EBADF</li>
                 </ul>
-                    In this example, close is called twice on the same process id.  close(-1) closes any open process which could have included process 39. The subsequent close call would return in error and set the errno flag to EBADF
+                    In this example, close is called twice on the same process id.  close(-1) closes any open process which could have included process 39. The subsequent close call would return in error and set the errno flag to EBADF.
                 <ul>
                     <li>fd = open(...) read(fd)... fd leak</li>
                 </ul>
@@ -136,6 +136,11 @@ i.e.
                         </code>
                     </pre>
                     Right now Apache has to execute two system calls every time it wants to write to the log.  This is a very inelegant way to solve the problem.  This <a href="http://en.wikipedia.org/wiki/Polling_(computer_science)"><i>polling</i></a> approach is also very slow.<br>
+                    <br>
+                    Polling is when a process actively "checks" whether the resource that it wants to use is busy or not. 
+                    The polling in our code are the checklog() calls. 
+                    Polling in this manner effectively wastes CPU cycles checking if it's okay to execute code instead of actually executing it.
+                    This is what makes polling an inefficient and undesirable behavior for our program. <br>
                     <br>
                     More trouble: What would happen if the power failed? We would have the same issue. <br>
                     <br>
