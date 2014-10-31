@@ -1,0 +1,405 @@
+<HTML>
+<HEAD>
+<TITLE>CS111: Lecture 6 Scribe Notes (10/22/14)</TITLE>
+<style>
+    td {
+        font-family: Verdana, Helvetica, Arial, sans-serif;
+        font-size: 10pt;
+    }
+    pre{
+        color: $0033CC;
+    }
+
+    h2 {
+        line-height: 40pt;
+    }
+    .new {
+        color:#CC3300;
+    }
+    .new2{
+        color:#CC0066;
+    }
+</style>
+</HEAD>
+<BODY>
+<div align=center>
+    <table border=0 width=300>
+        <tr><td>
+            <center>
+                <h1>CS 111</h1>
+                <h2>Lecture 6 Scribe Notes</h2>
+                <h3>Signals, Signal Processing, and Threads</h3>
+                <h4><i>by Thomas Lutton & Nicholas Yee</i></h4>
+                <h4>10/22/14</h4>
+            </center>
+            <h4>What can go wrong?</h4>
+            <p>
+                (cont'd discussion of the hazards of file descriptors from the end of lecture 5)
+                <h4>File descriptors:</h4>
+                Many race conditions can originate from how we utilize file descriptors.  Below are a few examples of some error causing behaviour and the accompanying result. 
+                <ul>
+                    <li>close(-1) close(39) == 1 errno == EBADF</li>
+                    <li>fd = open(...) read(fd)... fd leak</li>
+                    <li>fd = open("/dev/usb/dr1"...) read(fd, ...) *unplug* read(fd, ...) // return -1</li>
+                </ul>
+                <h4>Race Conditons:</h4>
+                <ul>
+                    <li>(cat a & cabt b) > outfile</li>
+                    <center><img src="output_race_condition.png"></center>
+                    This gives us many possible outputs: <br>
+                    <pre>
+    a\n    (bad: output discarded)
+    b\n    (bad: output discarded)
+    a\nb\n (ok)
+    b\na\n (ok)
+    ab\n\n (bad: interleaved)
+                    </pre>
+                    It should be noted that "small writes" (i.e. <= 2048 bytes) are done atomically while writes with a large output have the potential to be interleaved.  This would not happen in our simple example, but could become a possibility in other applications. <br><br>
+                    <li>(cat > a & cat > b) < infile</li>
+                    <center><img src="input_race_condition.png"></center>
+                    <pre>
+    |a| + |b| = |infile|
+                    </pre>
+                    <li>(cat a & cat b) | (cat > c & cat > d) </li> <br>
+                    This would create a lot of race conditions since the behavior largely depends on timing which means that it is variable and therefore very difficult to debug.  The best way to debug a race condition is to not create one.  In this lecture we will be examining ways of writing code in order to avoid race conditions and write safe code. 
+                </ul>
+
+
+                <h4> Task: rotate a log file </h4>
+                    Our goal is to keep a log of all of Apache's activity.  In order to do this, we must keep two files, log and oldlog.  log contains all of the information for the current day while oldlog contains a copy of the log file from the previous day.  <br>
+                    <br>
+                    log       <= apache writes to this endlessly<br>
+                    oldlog    <= yesterday's log<br>
+                    <br>
+                    The tricky part (most prone to error) occurs when log must be transitioned to oldlog at midnight. <br>
+                    <pre>
+    $ mv log old log
+    $ >log
+                    </pre>
+                    However, we need some way of telling Apache to close/reopen its log file.
+                    <pre>
+i.e.
+    close(fd);
+    fd = open("log", O_WRONLY ...);
+                    </pre>
+                    Right now, our writes to the log look like this:
+                    <pre>
+    write(fd, "good stuff\n", 11);
+    write(fd, "more good stuff\n", 16);
+                    </pre>
+                    Can you see the problem with this attempt? Hint: Race condition<br>
+                    <br>
+                    With this naive writing to the log file, it is possible that the current time is midnight and the log file's location is being changed (meaning that subsequent writes will write into oldlog instead of log).  We need to add some sort of check to make sure that the log is being written to the correct place. Here's the change:
+                    <pre>
+    checklog();
+    write(fd, "good stuff\n", 11);
+    checklog();
+    write(fd, "more good stuff\n", 16);
+                    </pre>
+                    with checklog() defined as follows:
+                    <pre>
+                        <code>
+    int checklog(void) {
+        if(stat("log", &st) < 0 || st.st_size == 0) {
+            close(fd);
+            fd = open("log",...);
+        }
+    }
+                        </code>
+                    </pre>
+                    Right now Apache has to execute two system calls every time it wants to write to the log.  This is a very inelegant way to solve the problem.  This <a href="http://en.wikipedia.org/wiki/Polling_(computer_science)"><i>polling</i></a> approach is also very slow.<br>
+                    <br>
+                    More trouble: What would happen if the power failed? We would have the same issue. <br>
+                    <br>
+
+                <h4>Signals</h4>
+
+                Let's start this section with an analogy.<br>
+                <br>
+                signals : processes :: traps : hardware.<br>
+                <br>
+                That's right, signals work for processes in the same way that traps work for hardware.<br>
+                <br>
+                <a href="http://en.wikipedia.org/wiki/Trap_(computing)">traps</a> - after any machine instruction, the equivalent of INT 0x80 can occur.<br>
+                <br>
+                <a href="http://unixhelp.ed.ac.uk/CGI/man-cgi?signal+7">signals</a> - the kernel can take control and:<br>
+                <ul>
+                    <li>terminate processes</li>
+                    <li>continue as before</li>
+                    <li>cause program to call one of your functions with an asynchronous function call</li>
+                </ul>
+                Using signals is a good way to avoid wasting CPU resources by polling.<br>
+                <br>
+                <table>
+                    <body>
+                        <tr>
+                            <td><b>Signal</b></td><td><b>Meaning</b></td><td><b>Additional Info</b></td>
+                        </tr>
+                        <tr>
+                            <td>SIGINT</td><td>interrupt ^C</td><td> <= uncooperative process</td>
+                        </tr>
+                        <tr>
+                            <td>SIGHUP</td><td>hang up</td><td><= unexpected loss of resources</td>
+                        </tr>
+                        <tr>
+                            <td>SIGSEGV</td><td>segmentation violations</td>
+                        </tr>
+                        <tr>
+                            <td>SIGBUS</td><td>bus error</td>
+                        </tr>
+                        <tr>
+                            <td>SIGFPE</td><td>floating point exception</td><td> almost impossible to see nowadays</td>
+                        </tr>
+                        <tr>
+                            <td>SIGPIPE</td><td>writing to pipe w/ no readers</td>
+                        </tr>
+                        <tr>
+                            <td>SIGKILL</td><td>immediately ends process</td>
+                        </tr>
+                        <tr>
+                            <td>SIGALRM</td><td>alarm clock</td><td>put a time limit on your own process</td>
+                        </tr>
+                        <tr>
+                            <td>SIGXCPU</td><td>CPU quota exceeded limit</td>
+                        </tr>
+                        <tr>
+                            <td>SIGXFS2</td><td>file size</td>
+                        </tr>
+                    </body>
+                </table>
+                <br>
+                Brief aside on why it is very rare (borderlined impossible) to see a SIGFPE:
+                <ul>
+                    <li>programmers were embarrassed and frustrated by receiving SIGFPE</li>
+                    <li>told hardware designers to make systems where floating point exceptions would not occur</li>
+                    <li>hardware designers added handling such as INF-INF=NaN instead of triggering SIGFPE</li>
+                    <li>still one way to get SIGFPE:</li>
+                    <pre>
+    int x = INT_MIN / (-1);
+                    </pre>
+                </ul>
+                <h4>Some more information about kill:</h4>
+                Kill is very useful.  If a process is behaving poorly, it can be killed in order to free the CPU to run meaningful processes.  An example of how kill might be used is seen below. 
+                <pre>
+                    <code>
+    int kill(pid_t pid, int sig); // send signal to process
+        // can send only to own processes on lnxsrv
+
+    pid_t p = fork();
+    if(p > 0) {
+        sleep(30);
+        kill(p, SIGINT);
+    }
+    wait_pid(p, ...); // weird exit status > 127
+                    </code>
+                </pre>
+                <h4>Typedef of a Signal Handler</h4>
+                <pre>
+                    <code>
+    typedef void (*sighandler_t)(int); // pointer to function that takes int & returns void
+
+    sighandler_t signal(int, sighandler_t); // int is sig num, returns old handler
+                    </code>
+                </pre>
+                The signal handler takes an int and the new handler. Returns the old signal handler.
+                <pre>
+example:
+                    <code>
+    int main(void) {
+        signal(SIGALRM, bing); // set up handler before action that provokes signal
+        alarm(30);
+        // really complicated main code
+        return 0;
+    }
+                    </code>
+                </pre>
+                How is our initial implementation of the bing sighandler?
+                <pre>
+                    <code>
+    void bing(int sig) {
+        printf("BING! %d\n", sig);
+        exit(27);
+    }
+                    </code>
+                </pre>
+                There are some <b>major</b> problems with this handler. What if the signal arrives when printf is active? This is very dangerous and will result in undefined behavior.
+                <ul>
+                    <li>signal could arrive while printf is being called. printf is not safe when called 'recursively'</li>
+                    <li>don't call exit.  Exit flushes I/O buffers... could drop core. </li>
+                </ul>
+ <!--               <pre>
+    stack:
+        printf
+        bing
+        delicate stuff
+        printf
+        main
+                </pre>-->
+                Solution? Don't call printf or exit! Stick to safe things... AKA <a href="https://www.securecoding.cert.org/confluence/display/seccode/BB.+Definitions#BB.Definitions-asynchronous-safefunction">asynchronous-safe functions</a>.<br>
+                <br>
+                Asynchronous-safe functions are the only functions that should be called from within a signal handlder.  These functions are able to be interrupted at any time and can also run out of sync without causing undefined and dangerous side-effects. <br>
+                <br>
+                A few asynchronus-safe functions:
+                <ul>
+                    <li>write</li>
+                    <li>read</li>
+                    <li>close</li>
+                    <li>_exit</li>
+                </ul>
+                All of the above functions must go through the kernel. <br>
+                <br>
+                Don't use:
+                <ul>
+                    <li>stdio (printf, fopen, fclose)</li>
+                    <li>malloc, free</li>
+                    <li>any function that looks at shared memory</li>
+                </ul>
+                <br>
+                Safe version of our handler:
+                <pre>
+    void bing(int sig) {
+        write(1, "BING!\n", 6);
+        _exit(27);
+    }
+                </pre>
+                A couple of more signals:<br>
+                <ul>
+                    <li><a href="http://en.cppreference.com/w/cpp/utility/program/SIG_strategies">SIG_DFL</a></li>
+                    <li>SIG_IGN <= discard signals</li>
+                </ul>
+                <br>
+                <h4>Example of Signal Handling with gzip</h4>
+                Let's take a look at a dangerous situation that can be caused by sending a signal when the CPU is executing our sensitive gzip command.<br>
+                <br>
+                gzip foo => foo.gz
+                <pre>
+                    <code>
+    gzip(...) {
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", OWRONLY);
+        magiczip(in, out);
+        close(in);
+        close(out);
+        unlink("foo");
+    }
+                    </code>
+                </pre>
+                What happens when you press ^C while gzip is executing? The default behavior would be return an incomplete foo.gz (bad). <br>
+                <br>
+
+                If the process gets interrupted, we want for either orginal foo to be restored or the completely zipped foo.gz to be returned.  What we don't want is some interleaved output or to lose all of our data in the case of a signal. <br>
+                <br>
+                One fix would be to just ignore SIGINT signals.  This way, the user can't possibly cause an interrupt when we are performing a sensitve operation.
+                <pre>
+                    <code>
+    gzip(...) {
+        signal(SIGINT, SIG_IGN); // but then we can't use ^C
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", O_WRONLY);
+        magiczip(in, out);
+        close(in);
+        close(out);
+        unlink("foo");
+    }   
+                    </code>
+                </pre>
+                As referenced in the comment above, this implementation isn't quite right because it disables our usage of ^C entirely.  If for some reason this instance of gzip was taking too long to execute or a bug somewhere else in the code caused an infinite loop, there would be no way to get back control of the CPU.<br>
+                <br>
+                A <i>better fix</i> would be create a cleanup function and whenever a SIGINT signal is received, you run the clean up function.
+                <pre>
+                    <code>
+    gzip(...) {
+        signal(SIGINT, cleanup);
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", O_WRONLY);
+        magicaip(in, out);
+        close(in);
+        close(out);
+        unlink("foo");
+    }
+
+    void cleanup(int sig) {
+        unlink("foo.gz");
+        _exit(97);
+    }
+                    </code>
+                </pre>
+                However, this solution is also not perfect.  What would happen if we exited during the unlink call? We could actually lose both foo and foo.gz.  There has to be more secure way.<br>
+                <br>
+                A suggested solution to this problem was to set an integer flag, but that would most likely be optimized out by the compiler. <br>
+                <br>
+                An <i>even better</i> solution is to use a <a href="http://man7.org/linux/man-pages/man3/pthread_sigmask.3.html">pthread_sigmask</a>.
+                <pre>
+                    <code>
+    gzip(...) {
+        signal(SIGINT, cleanup);
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", O_WRONLY);
+        magiczip(in, out);
+        close(in);
+        close(out);
+        pthread sigmask(SIG_BLOCK);
+        unlink("foo");
+    }
+                    </code>
+                </pre>
+                Using a pthread_sigmask blocks signals that are received during critical sections of code.  When the critical code is done executing, it restores the mask to its previous value. <br>
+                
+                <h4> pthread_sigmask </h4>
+                <pre>
+                    <code>
+    int pthread_sigmask(int how,
+                        sigset_t const * restrict set,
+                        sigset_t * restrict oset);
+                    </code>
+                </pre>
+                Parameters:
+                <ul>
+                    <li>how: handles altering of signal that it intercepts. i.e. how = {SIG_BLOCK or SIG_UNBLOCK or SIG_SETMASK} </li>
+                    <li>set: gets the old signal and combines values to figure what the new set will be</li>
+                    <li>oset: pointer to RO signal set</li>
+                </ul>
+                // while you're doing something important, you won't be bothered by a signal.<br>
+                <br>
+                <br>
+                Note: The general rule of thumb for race conditions is to assume that you wrote it wrong.  That is the case more often than not. 
+                <h4>Threads</h4>
+                <a href="http://en.wikipedia.org/wiki/Thread_(computing)">Threads</a> are like light weight processes.  Why do we use them? Performance!
+                <ul>
+                    <li>we want a lot of them</li>
+                    <li>we want fast context-switching</li>
+                    <li>threads are not insulated from each other (threads utilize shared memory) which gives faster communication</li>
+                </ul>
+                Pros and Cons:
+                <pre>
++ performance
+- simplicity (can be very complicated and lead to race conditions)
+- reliability
+                </pre>
+                Usually you can get two out of the three to work.  Generally programmers will sacrifice simplicity in order to get performance and reliability. <br>
+                <br>
+                <table>
+                    <body>
+                        <tr>
+                            <td><b>Threads</b></td><td></td><td></td><td><b>Processes</b></td>
+                        </tr>
+                        <tr>
+                            <td>pthread_create</td><td></td><td></td><td>fork (or posix_spawn)</td>
+                        </tr>
+                        <tr>
+                            <td>pthread_join</td><td></td><td></td><td>waitpid</td>
+                        </tr>
+                        <tr>
+                            <td>pthread_exit</td><td></td><td></td><td>_exit</td>
+                        </tr>
+                    </body>
+                </table>
+                <br>
+                    Note: Threads share memory while processes are isolated.
+                    <br><br><br><br><br><br><br><br><br><br>
+            </p>
+            
+
+</BODY>
+
+</HTML>
