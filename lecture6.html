@@ -227,15 +227,17 @@ example:
                     <li>signal could arrive while printf is being called. printf is not safe when called 'recursively'</li>
                     <li>don't call exit.  Exit flushes I/O buffers... could drop core. </li>
                 </ul>
-                <pre>
+ <!--               <pre>
     stack:
         printf
         bing
         delicate stuff
         printf
         main
-                </pre>
+                </pre>-->
                 Solution? Don't call printf or exit! Stick to safe things... AKA <a href="https://www.securecoding.cert.org/confluence/display/seccode/BB.+Definitions#BB.Definitions-asynchronous-safefunction">asynchronous-safe functions</a>.<br>
+                <br>
+                Asynchronous-safe functions are the only functions that should be called from within a signal handlder.  These functions are able to be interrupted at any time and can also run out of sync without causing undefined and dangerous side-effects. <br>
                 <br>
                 A few asynchronus-safe functions:
                 <ul>
@@ -282,10 +284,10 @@ example:
     }
                     </code>
                 </pre>
-                What happens when you press ^C while gzip is executing? The default behavior would be return an incomplete foo.gz which is bad. <br>
+                What happens when you press ^C while gzip is executing? The default behavior would be return an incomplete foo.gz (bad). <br>
                 <br>
 
-                If the process gets interrupted, we want either to orginal foo to be restored or the completely zipped foo.gz.  What we don't want is some interleaved output or to lose all of our data in the case of a signal. <br>
+                If the process gets interrupted, we want for either orginal foo to be restored or the completely zipped foo.gz to be returned.  What we don't want is some interleaved output or to lose all of our data in the case of a signal. <br>
                 <br>
                 One fix would be to just ignore SIGINT signals.  This way, the user can't possibly cause an interrupt when we are performing a sensitve operation.
                 <pre>
