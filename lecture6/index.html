@@ -245,6 +245,8 @@ i.e.
     wait_pid(p, ...); // weird exit status > 127
                     </code>
                 </pre>
+                Beyond the application of just killing processes, kill can be used more generally as a means of communication between processes by passing different signals through the second parameter (as opposed to SIGINT). 
+                <br>
                 <h4>How do you handle signals?</h4>
                 With a signal handler of course!<br>
                 <br>
