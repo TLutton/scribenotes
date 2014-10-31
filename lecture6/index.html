@@ -9,7 +9,7 @@
         font-size: 10pt;
     }
     pre{
-        color: $0033CC;
+        color: #0033CC;
     }
 
     h2 {
@@ -41,7 +41,10 @@
                 Many race conditions can originate from how we utilize file descriptors.  Below are a few examples of some error causing behaviour and the accompanying result. 
 
                 <ul>
-                    <li>close(-1) close(39) == 1 errno == EBADF</li>
+                    <li>close(-1) [some time passes] close(39) == 1 errno == EBADF</li>
+                </ul>
+                    In this example, close is called on the same process id.  close(-1) closes any open process which could have included process 39. The subsequent close call would return in error and set the errno flag to EBADF
+                <ul>
                     <li>fd = open(...) read(fd)... fd leak</li>
                     <li>fd = open("/dev/usb/dr1"...) read(fd, ...) *unplug* read(fd, ...) // return -1</li>
                 </ul>
@@ -49,7 +52,7 @@
                 <h4>Race Conditons:</h4>
                 
                 <ul>
-                    <li>(cat a & cabt b) > outfile</li>
+                    <li>(cat a & cat b) > outfile</li>
                 </ul>
                     <div style="text-align:center;">
                         <img src="output_race_condition.png" alt="output race condition">
@@ -276,7 +279,7 @@ example:
                 </pre>-->
                 Solution? Don't call printf or exit! Stick to safe things... AKA <a href="https://www.securecoding.cert.org/confluence/display/seccode/BB.+Definitions#BB.Definitions-asynchronous-safefunction">asynchronous-safe functions</a>.<br>
                 <br>
-                Asynchronous-safe functions are the only functions that should be called from within a signal handlder.  These functions are able to be interrupted at any time and can also run out of sync without causing undefined and dangerous side-effects. <br>
+                Asynchronous-safe functions are the only functions that should be called from within a signal handler.  These functions are able to be interrupted at any time and can also run out of sync without causing undefined and dangerous side-effects. <br>
                 <br>
                 A few asynchronus-safe functions:
                 <ul>
