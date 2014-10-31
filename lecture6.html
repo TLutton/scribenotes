@@ -26,16 +26,16 @@
     <table border=0 width=300>
         <tr><td>
             <center>
-				<h1>CS 111</h1>
-				<h2>Lecture 6 Scribe Notes</h2>
-				<h3>Signals, Signal Processing, and Threads</h3>
-				<h4><i>by Thomas Lutton & Nicholas Yee</i></h4>
-			</center>
+                <h1>CS 111</h1>
+                <h2>Lecture 6 Scribe Notes</h2>
+                <h3>Signals, Signal Processing, and Threads</h3>
+                <h4><i>by Thomas Lutton & Nicholas Yee</i></h4>
+            </center>
             <h4>What can go wrong?</h4>
             <p>
                 (cont'd discussion of the hazards of file descriptors from the end of lecture 5)
                 <h4>File descriptors:</h4>
-				Many race conditions can originate from how we utilize file descriptors.  Below are a few examples of some error causing behaviour and the accompanying result. 
+                Many race conditions can originate from how we utilize file descriptors.  Below are a few examples of some error causing behaviour and the accompanying result. 
                 <ul>
                     <li>close(-1) close(39) == 1 errno == EBADF</li>
                     <li>fd = open(...) read(fd)... fd leak</li>
@@ -44,7 +44,7 @@
                 <h4>Race Conditons:</h4>
                 <ul>
                     <li>(cat a & cabt b) > outfile</li>
-					<center><img src="output_race_condition.png"></center>
+                    <center><img src="output_race_condition.png"></center>
                     This gives us many possible outputs: <br>
                     <pre>
     a\n    (bad: output discarded)
@@ -55,7 +55,7 @@
                     </pre>
                     It should be noted that "small writes" (i.e. <= 2048 bytes) are done atomically while writes with a large output have the potential to be interleaved.  This would not happen in our simple example, but could become a possibility in other applications. <br><br>
                     <li>(cat > a & cat > b) < infile</li>
-					<center><img src="input_race_condition.png"></center>
+                    <center><img src="input_race_condition.png"></center>
                     <pre>
     |a| + |b| = |infile|
                     </pre>
@@ -264,21 +264,21 @@ example:
                     <li><a href="http://en.cppreference.com/w/cpp/utility/program/SIG_strategies">SIG_DFL</a></li>
                     <li>SIG_IGN <= discard signals</li>
                 </ul>
-				<br>
-				<h4>Example of Signal Handling with gzip</h4>
+                <br>
+                <h4>Example of Signal Handling with gzip</h4>
                 Let's take a look at a dangerous situation that can be caused by sending a signal when the CPU is executing our sensitive gzip command.<br>
                 <br>
                 gzip foo => foo.gz
-				<pre>
+                <pre>
                     <code>
-	gzip(...) {
-	    int in = open("foo", O_RDONLY);
-	    int out = open("foo.gz", OWRONLY);
-	    magiczip(in, out);
-	    close(in);
-	    close(out);
-	    unlink("foo");
-	}
+    gzip(...) {
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", OWRONLY);
+        magiczip(in, out);
+        close(in);
+        close(out);
+        unlink("foo");
+    }
                     </code>
                 </pre>
                 What happens when you press ^C while gzip is executing? The default behavior would be return an incomplete foo.gz which is bad. <br>
@@ -289,31 +289,31 @@ example:
                 One fix would be to just ignore SIGINT signals.  This way, the user can't possibly cause an interrupt when we are performing a sensitve operation.
                 <pre>
                     <code>
-	gzip(...) {
-	    signal(SIGINT, SIG_IGN); // but then we can't use ^C
-	    int in = open("foo", O_RDONLY);
-	    int out = open("foo.gz", O_WRONLY);
-	    magiczip(in, out);
-	    close(in);
-	    close(out);
-	    unlink("foo");
-	}	
+    gzip(...) {
+        signal(SIGINT, SIG_IGN); // but then we can't use ^C
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", O_WRONLY);
+        magiczip(in, out);
+        close(in);
+        close(out);
+        unlink("foo");
+    }   
                     </code>
                 </pre>
-				As referenced in the comment above, this implementation isn't quite right because it disables our usage of ^C entirely.  If for some reason this instance of gzip was taking too long to execute or a bug somewhere else in the code caused an infinite loop, there would be no way to get back control of the CPU.<br>
+                As referenced in the comment above, this implementation isn't quite right because it disables our usage of ^C entirely.  If for some reason this instance of gzip was taking too long to execute or a bug somewhere else in the code caused an infinite loop, there would be no way to get back control of the CPU.<br>
                 <br>
-				A <i>better fix</i> would be create a cleanup function and whenever a SIGINT signal is received, you run the clean up function.
+                A <i>better fix</i> would be create a cleanup function and whenever a SIGINT signal is received, you run the clean up function.
                 <pre>
                     <code>
-	gzip(...) {
-	    signal(SIGINT, cleanup);
-	    int in = open("foo", O_RDONLY);
-	    int out = open("foo.gz", O_WRONLY);
-	    magicaip(in, out);
-	    close(in);
-	    close(out);
-	    unlink("foo");
-	}
+    gzip(...) {
+        signal(SIGINT, cleanup);
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", O_WRONLY);
+        magicaip(in, out);
+        close(in);
+        close(out);
+        unlink("foo");
+    }
 
     void cleanup(int sig) {
         unlink("foo.gz");
@@ -321,29 +321,29 @@ example:
     }
                     </code>
                 </pre>
-				However, this solution is also not perfect.  What would happen if we exited during the unlink call? We could actually lose both foo and foo.gz.  There has to be more secure way.<br>
-				<br>
+                However, this solution is also not perfect.  What would happen if we exited during the unlink call? We could actually lose both foo and foo.gz.  There has to be more secure way.<br>
+                <br>
                 A suggested solution to this problem was to set an integer flag, but that would most likely be optimized out by the compiler. <br>
                 <br>
-				An <i>even better</i> solution is to use a <a href="http://man7.org/linux/man-pages/man3/pthread_sigmask.3.html">pthread_sigmask</a>.
+                An <i>even better</i> solution is to use a <a href="http://man7.org/linux/man-pages/man3/pthread_sigmask.3.html">pthread_sigmask</a>.
                 <pre>
                     <code>
-	gzip(...) {
-	    signal(SIGINT, cleanup);
-	    int in = open("foo", O_RDONLY);
-	    int out = open("foo.gz", O_WRONLY);
-	    magiczip(in, out);
-	    close(in);
-	    close(out);
-	    pthread sigmask(SIG_BLOCK);
-	    unlink("foo");
-	}
+    gzip(...) {
+        signal(SIGINT, cleanup);
+        int in = open("foo", O_RDONLY);
+        int out = open("foo.gz", O_WRONLY);
+        magiczip(in, out);
+        close(in);
+        close(out);
+        pthread sigmask(SIG_BLOCK);
+        unlink("foo");
+    }
                     </code>
                 </pre>
-				Using a pthread_sigmask blocks signals that are received during critical sections of code.  When the critical code is done executing, it restores the mask to its previous value. <br>
-				
-				<h4> pthread_sigmask </h4>
-				<pre>
+                Using a pthread_sigmask blocks signals that are received during critical sections of code.  When the critical code is done executing, it restores the mask to its previous value. <br>
+                
+                <h4> pthread_sigmask </h4>
+                <pre>
                     <code>
     int pthread_sigmask(int how,
                         sigset_t const * restrict set,
@@ -353,13 +353,13 @@ example:
                 Parameters:
                 <ul>
                     <li>how: handles altering of signal that it intercepts. i.e. how = {SIG_BLOCK or SIG_UNBLOCK or SIG_SETMASK} </li>
-					<li>set: gets the old signal and combines values to figure what the new set will be</li>
-					<li>oset: pointer to RO signal set</li>
+                    <li>set: gets the old signal and combines values to figure what the new set will be</li>
+                    <li>oset: pointer to RO signal set</li>
                 </ul>
                 // while you're doing something important, you won't be bothered by a signal.<br>
                 <br>
-				<br>
-				Note: The general rule of thumb for race conditions is to assume that you wrote it wrong.  That is the case more often than not. 
+                <br>
+                Note: The general rule of thumb for race conditions is to assume that you wrote it wrong.  That is the case more often than not. 
                 <h4>Threads</h4>
                 <a href="http://en.wikipedia.org/wiki/Thread_(computing)">Threads</a> are like light weight processes.  Why do we use them? Performance!
                 <ul>
@@ -391,7 +391,7 @@ example:
                         </tr>
                     </body>
                 </table>
-				<br>
+                <br>
                     Note: Threads share memory while processes are isolated.
                     <br><br><br><br><br><br><br><br><br><br>
             </p>
