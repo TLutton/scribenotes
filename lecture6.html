@@ -23,7 +23,7 @@
 </HEAD>
 <BODY>
 <div align=center>
-    <table border=0 width=500>
+    <table border=0 width=300>
         <tr><td>
 
             <h1>CS 111</h1>
@@ -232,7 +232,7 @@ example:
                 </pre>
                 Solution? Don't call printf or exit! Stick to safe things... AKA <a href="https://www.securecoding.cert.org/confluence/display/seccode/BB.+Definitions#BB.Definitions-asynchronous-safefunction">asynchronous-safe functions</a>.<br>
                 <br>
-                A few asynchronus_safe functions:
+                A few asynchronus-safe functions:
                 <ul>
                     <li>write</li>
                     <li>read</li>
@@ -248,7 +248,7 @@ example:
                     <li>any function that looks at shared memory</li>
                 </ul>
                 <br>
-                Safe version:
+                Safe version of our handler:
                 <pre>
     void bing(int sig) {
         write(1, "BING!\n", 6);
@@ -257,17 +257,21 @@ example:
                 </pre>
                 A couple of more signals:<br>
                 <ul>
-                    <li>SIG_DFL</li>
+                    <li><a href="http://en.cppreference.com/w/cpp/utility/program/SIG_strategies">SIG_DFL</a></li>
                     <li>SIG_IGN <= discard signals</li>
                 </ul>
                 <br>
                 <pre>
                     <code>
-    int pthread_sigmask(int hav,
+    int pthread_sigmask(int how,
                         sigset_t const * restrict set,
                         sigset_t * restrict oset);
                     </code>
                 </pre>
+                Parameters:
+                <ul>
+                    <li>how: handles altering of signal that it intercepts. i.e. how = {SIG_BLOCK or SIG_UNBLOCK or SIG_SETMASK}
+                </ul>
                 1st param: SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK<br>
                 // while you're doing something important, you won't be bothered by a signal.<br>
                 <br>
