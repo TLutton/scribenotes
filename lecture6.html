@@ -35,6 +35,7 @@
             <p>
                 (cont'd discussion of the hazards of file descriptors from the end of lecture 5)
                 <h4>File descriptors:</h4>
+				Many race conditions can originate from how we utilize file descriptors.  Below are a few examples of some error causing behaviour and the accompanying result. 
                 <ul>
                     <li>close(-1) close(39) == 1 errno == EBADF</li>
                     <li>fd = open(...) read(fd)... fd leak</li>
