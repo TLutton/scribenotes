@@ -246,8 +246,11 @@ i.e.
                     </code>
                 </pre>
                 <h4>How do you handle signals?</h4>
-                With a signal handler of course!
-                &lt; insert signal handler explanation here > <br>
+                With a signal handler of course!<br>
+                <br>
+                A signal handler is a function that is declared to run whenever a certain signal is received.  
+                You can anticipate events that may cause signals to be created and then write a function to execute some code when that certain signal is received in order to gracefully recover from the signal causing behavior.<br>
+                <br>
                 <h4>Typedef of a Signal Handler</h4>
                 <pre>
                     <code>
