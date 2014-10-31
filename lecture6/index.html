@@ -33,20 +33,27 @@
                 <h4>10/22/14</h4>
             </center>
             <h4>What can go wrong?</h4>
-            <p>
+            
                 (cont'd discussion of the hazards of file descriptors from the end of lecture 5)
                 <h4>File descriptors:</h4>
                 Many race conditions can originate from how we utilize file descriptors.  Below are a few examples of some error causing behaviour and the accompanying result. 
+                
                 <ul>
                     <li>close(-1) close(39) == 1 errno == EBADF</li>
                     <li>fd = open(...) read(fd)... fd leak</li>
                     <li>fd = open("/dev/usb/dr1"...) read(fd, ...) *unplug* read(fd, ...) // return -1</li>
                 </ul>
+
                 <h4>Race Conditons:</h4>
+                
                 <ul>
                     <li>(cat a & cabt b) > outfile</li>
-                    <center><img src="output_race_condition.png"></center>
+                </ul>
+                    <center>
+                        <img src="output_race_condition.png" alt="output race condition">
+                    </center>
                     This gives us many possible outputs: <br>
+                    
                     <pre>
     a\n    (bad: output discarded)
     b\n    (bad: output discarded)
@@ -54,15 +61,27 @@
     b\na\n (ok)
     ab\n\n (bad: interleaved)
                     </pre>
-                    It should be noted that "small writes" (i.e. <= 2048 bytes) are done atomically while writes with a large output have the potential to be interleaved.  This would not happen in our simple example, but could become a possibility in other applications. <br><br>
-                    <li>(cat > a & cat > b) < infile</li>
-                    <center><img src="input_race_condition.png"></center>
+
+                    It should be noted that "small writes" (i.e. &lt;= 2048 bytes) are done atomically while writes with a large output have the potential to be interleaved.  This would not happen in our simple example, but could become a possibility in other applications. <br>
+                    <br>
+                
+                <ul>
+                    <li>(cat > a & cat > b) &lt; infile</li>
+                </ul>
+
+                    <center>
+                        <img src="input_race_condition.png" alt="intput race condition">
+                    </center>
+
                     <pre>
     |a| + |b| = |infile|
                     </pre>
-                    <li>(cat a & cat b) | (cat > c & cat > d) </li> <br>
-                    This would create a lot of race conditions since the behavior largely depends on timing which means that it is variable and therefore very difficult to debug.  The best way to debug a race condition is to not create one.  In this lecture we will be examining ways of writing code in order to avoid race conditions and write safe code. 
+
+                <ul>
+                    <li>(cat a & cat b) | (cat > c & cat > d) </li> 
                 </ul>
+                <br>
+                    This would create a lot of race conditions since the behavior largely depends on timing which means that it is variable and therefore very difficult to debug.  The best way to debug a race condition is to not create one.  In this lecture we will be examining ways of writing code in order to avoid race conditions and write safe code. 
 
 
                 <h4> Task: rotate a log file </h4>
@@ -131,41 +150,60 @@ i.e.
                 Using signals is a good way to avoid wasting CPU resources by polling.<br>
                 <br>
                 <table>
-                    <body>
                         <tr>
-                            <td><b>Signal</b></td><td><b>Meaning</b></td><td><b>Additional Info</b></td>
+                            <td><b>Signal</b></td>
+                            <td><b>Meaning</b></td>
+                            <td><b>Additional Info</b></td>
                         </tr>
                         <tr>
-                            <td>SIGINT</td><td>interrupt ^C</td><td> <= uncooperative process</td>
+                            <td>SIGINT</td>
+                            <td>interrupt ^C</td><td> &lt;= uncooperative process</td>
                         </tr>
                         <tr>
-                            <td>SIGHUP</td><td>hang up</td><td><= unexpected loss of resources</td>
+                            <td>SIGHUP</td><td>hang up</td>
+                            <td>&lt;= unexpected loss of resources</td>
+                            <td></td>
                         </tr>
                         <tr>
-                            <td>SIGSEGV</td><td>segmentation violations</td>
+                            <td>SIGSEGV</td>
+                            <td>segmentation violations</td>
+                            <td></td>
                         </tr>
                         <tr>
-                            <td>SIGBUS</td><td>bus error</td>
+                            <td>SIGBUS</td>
+                            <td>bus error</td>
+                            <td></td>
                         </tr>
                         <tr>
-                            <td>SIGFPE</td><td>floating point exception</td><td> almost impossible to see nowadays</td>
+                            <td>SIGFPE</td><td>floating point exception</td>
+                            <td> almost impossible to see nowadays</td>
+                            <td></td>
                         </tr>
                         <tr>
-                            <td>SIGPIPE</td><td>writing to pipe w/ no readers</td>
+                            <td>SIGPIPE</td>
+                            <td>writing to pipe w/ no readers</td>
+                            <td></td>
                         </tr>
                         <tr>
-                            <td>SIGKILL</td><td>immediately ends process</td>
+                            <td>SIGKILL</td>
+                            <td>immediately ends process</td>
+                            <td></td>
                         </tr>
                         <tr>
-                            <td>SIGALRM</td><td>alarm clock</td><td>put a time limit on your own process</td>
+                            <td>SIGALRM</td>
+                            <td>alarm clock</td>
+                            <td>put a time limit on your own process</td>
                         </tr>
                         <tr>
-                            <td>SIGXCPU</td><td>CPU quota exceeded limit</td>
+                            <td>SIGXCPU</td>
+                            <td>CPU quota exceeded limit</td>
+                            <td></td>
                         </tr>
                         <tr>
-                            <td>SIGXFS2</td><td>file size</td>
+                            <td>SIGXFS2</td>
+                            <td>file size</td>
+                            <td></td>
                         </tr>
-                    </body>
                 </table>
                 <br>
                 Brief aside on why it is very rare (borderlined impossible) to see a SIGFPE:
@@ -265,7 +303,7 @@ example:
                 A couple of more signals:<br>
                 <ul>
                     <li><a href="http://en.cppreference.com/w/cpp/utility/program/SIG_strategies">SIG_DFL</a></li>
-                    <li>SIG_IGN <= discard signals</li>
+                    <li>SIG_IGN &lt;= discard signals</li>
                 </ul>
                 <br>
                 <h4>Example of Signal Handling with gzip</h4>
@@ -379,27 +417,25 @@ example:
                 Usually you can get two out of the three to work.  Generally programmers will sacrifice simplicity in order to get performance and reliability. <br>
                 <br>
                 <table>
-                    <body>
-                        <tr>
-                            <td><b>Threads</b></td><td></td><td></td><td><b>Processes</b></td>
-                        </tr>
-                        <tr>
-                            <td>pthread_create</td><td></td><td></td><td>fork (or posix_spawn)</td>
-                        </tr>
-                        <tr>
-                            <td>pthread_join</td><td></td><td></td><td>waitpid</td>
-                        </tr>
-                        <tr>
-                            <td>pthread_exit</td><td></td><td></td><td>_exit</td>
-                        </tr>
-                    </body>
+                    <tr>
+                        <td><b>Threads</b></td><td></td><td></td><td><b>Processes</b></td>
+                    </tr>
+                    <tr>
+                        <td>pthread_create</td><td></td><td></td><td>fork (or posix_spawn)</td>
+                    </tr>
+                    <tr>
+                        <td>pthread_join</td><td></td><td></td><td>waitpid</td>
+                    </tr>
+                    <tr>
+                        <td>pthread_exit</td><td></td><td></td><td>_exit</td>
+                    </tr>
                 </table>
                 <br>
                     Note: Threads share memory while processes are isolated.
                     <br><br><br><br><br><br><br><br><br><br>
-            </p>
             
-
+</table>      
+</div>
 </BODY>
 
 </HTML>
