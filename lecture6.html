@@ -25,14 +25,15 @@
 <div align=center>
     <table border=0 width=300>
         <tr><td>
-
-            <h1>CS 111</h1>
-            <h2>Lecture 6 Scribe Notes</h2>
-            <i>by Thomas Lutton & Nicholas Yee</i>
-
-            <h3>What can go wrong?</h3>
+            <center>
+				<h1>CS 111</h1>
+				<h2>Lecture 6 Scribe Notes</h2>
+				<h3>Signals, Signal Processing, and Threads</h3>
+				<h4><i>by Thomas Lutton & Nicholas Yee</i></h4>
+			</center>
+            <h4>What can go wrong?</h4>
             <p>
-                (cont'd discussion of the hazards of file descriptors and opening/closing pipe from the end of lecture 5)
+                (cont'd discussion of the hazards of file descriptors from the end of lecture 5)
                 <h4>File descriptors:</h4>
                 <ul>
                     <li>close(-1) close(39) == 1 errno == EBADF</li>
@@ -196,7 +197,7 @@ i.e.
     sighandler_t signal(int, sighandler_t); // int is sig num, returns old handler
                     </code>
                 </pre>
-                The signal handler takes an int & the new handler and returns the old signal handler.
+                The signal handler takes an int and the new handler. Returns the old signal handler.
                 <pre>
 example:
                     <code>
@@ -270,50 +271,60 @@ example:
                 </pre>
                 Parameters:
                 <ul>
-                    <li>how: handles altering of signal that it intercepts. i.e. how = {SIG_BLOCK or SIG_UNBLOCK or SIG_SETMASK}
+                    <li>how: handles altering of signal that it intercepts. i.e. how = {SIG_BLOCK or SIG_UNBLOCK or SIG_SETMASK} </li>
+					<li>set: gets the old signal and combines values to figure what the new set will be</li>
+					<li>oset: pointer to RO signal set</li>
                 </ul>
-                1st param: SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK<br>
                 // while you're doing something important, you won't be bothered by a signal.<br>
                 <br>
-                Let's take a look at a dangerous situation that can be caused by sending a signal when the CPU is executing sensitive instructions.<br>
+                Let's take a look at a dangerous situation that can be caused by sending a signal when the CPU is executing our sensitive gzip command.<br>
                 <br>
-                gzip foo => foo.gz<br>
-                What happens when you press ^C?<br>
-                <br>
-                <pre>
+                gzip foo => foo.gz
+				<pre>
                     <code>
-    int in = open("foo", O_RDONLY);
-    int out = open("foo.gz", OWRONLY);
-    magiczip(in, out);
-    close(in);
-    close(out);
-    unlink("foo");
+	gzip(...) {
+	    int in = open("foo", O_RDONLY);
+	    int out = open("foo.gz", OWRONLY);
+	    magiczip(in, out);
+	    close(in);
+	    close(out);
+	    unlink("foo");
+	}
                     </code>
                 </pre>
+                What happens when you press ^C while gzip is executing? The default behavior would be return an incomplete foo.gz which is bad. <br>
+                <br>
+
                 If the process gets interrupted, we want either to orginal foo to be restored or the completely zipped foo.gz.  What we don't want is some interleaved output or to lose all of our data in the case of a signal. <br>
                 <br>
-                One fix:<br>
+                One fix would be to just ignore SIGINT signals.  This way, the user can't possibly cause an interrupt when we are performing a sensitve operation.
                 <pre>
                     <code>
-    signal(SIGINT, SIG_IGN); // but then we can't use ^C
-    int in = open("foo", O_RDONLY);
-    int out = open("foo.gz", O_WRONLY);
-    magiczip(in, out);
-    close(in);
-    close(out);
-    unlink("foo");
+	gzip(...) {
+	    signal(SIGINT, SIG_IGN); // but then we can't use ^C
+	    int in = open("foo", O_RDONLY);
+	    int out = open("foo.gz", O_WRONLY);
+	    magiczip(in, out);
+	    close(in);
+	    close(out);
+	    unlink("foo");
+	}	
                     </code>
                 </pre>
-                Better fix:<br>
+				As referenced in the comment above, this implementation isn't quite right because it disables our usage of ^C entirely.  If for some reason this instance of gzip was taking too long to execute or a bug somewhere else in the code caused an infinite loop, there would be no way to get back control of the CPU.<br>
+                <br>
+				A <i>better fix</i> would be create a cleanup function and whenever a SIGINT signal is received, you run the clean up function.
                 <pre>
                     <code>
-    signal(SIGINT, cleanup);
-    int in = open("foo", O_RDONLY);
-    int out = open("foo.gz", O_WRONLY);
-    magiczip(in, out);
-    close(in);
-    close(out);
-    unlink("foo"); // but what if we exit after this line? We would lose both foo and foo.gz
+	gzip(...) {
+	    signal(SIGINT, cleanup);
+	    int in = open("foo", O_RDONLY);
+	    int out = open("foo.gz", O_WRONLY);
+	    magicaip(in, out);
+	    close(in);
+	    close(out);
+	    unlink("foo");
+	}
 
     void cleanup(int sig) {
         unlink("foo.gz");
@@ -321,22 +332,28 @@ example:
     }
                     </code>
                 </pre>
+				However, this solution is also not perfect.  What would happen if we exited during the unlink call? We could actually lose both foo and foo.gz.  There has to be more secure way.<br>
+				<br>
                 A suggested solution to this problem was to set an integer flag, but that would most likely be optimized out by the compiler. <br>
                 <br>
-                Better still:<br>
+				An <i>even better</i> solution is to use a <a href="http://man7.org/linux/man-pages/man3/pthread_sigmask.3.html">pthread_sigmask</a>.
                 <pre>
                     <code>
-    signal(SIGINT, cleanup);
-    int in = open("foo", O_RDONLY);
-    int out = open("foo.gz", O_WRONLY);
-    magiczip(in, out);
-    close(in);
-    close(out);
-    pthread sigmask(SIG_BLOCK);
-    unlink("foo");
+	gzip(...) {
+	    signal(SIGINT, cleanup);
+	    int in = open("foo", O_RDONLY);
+	    int out = open("foo.gz", O_WRONLY);
+	    magiczip(in, out);
+	    close(in);
+	    close(out);
+	    pthread sigmask(SIG_BLOCK);
+	    unlink("foo");
+	}
                     </code>
                 </pre>
-				The general rule of thumb for race conditions is to assume that you wrote it wrong.  That is the case more often than not. 
+				Using a pthread_sigmask blocks signals that are received during critical sections of code.  When the critical code is done executing, it restores the mask to its previous value. <br>
+				<br>
+				Note: The general rule of thumb for race conditions is to assume that you wrote it wrong.  That is the case more often than not. 
                 <h4>Threads</h4>
                 <a href="http://en.wikipedia.org/wiki/Thread_(computing)">Threads</a> are like light weight processes.  Why do we use them? Performance!
                 <ul>
