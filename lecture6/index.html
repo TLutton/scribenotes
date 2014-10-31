@@ -1,5 +1,7 @@
-<HTML>
+<!DOCTYPE html>
+<html>
 <HEAD>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <TITLE>CS111: Lecture 6 Scribe Notes (10/22/14)</TITLE>
 <style>
     td {
@@ -22,22 +24,22 @@
 </style>
 </HEAD>
 <BODY>
-<div align=center>
-    <table border=0 width=300>
+<div style="text-align:left;">
+    <table>
         <tr><td>
-            <center>
+            <div style="text-align:center;">
                 <h1>CS 111</h1>
                 <h2>Lecture 6 Scribe Notes</h2>
                 <h3>Signals, Signal Processing, and Threads</h3>
                 <h4><i>by Thomas Lutton & Nicholas Yee</i></h4>
                 <h4>10/22/14</h4>
-            </center>
+            </div>
             <h4>What can go wrong?</h4>
             
                 (cont'd discussion of the hazards of file descriptors from the end of lecture 5)
                 <h4>File descriptors:</h4>
                 Many race conditions can originate from how we utilize file descriptors.  Below are a few examples of some error causing behaviour and the accompanying result. 
-                
+
                 <ul>
                     <li>close(-1) close(39) == 1 errno == EBADF</li>
                     <li>fd = open(...) read(fd)... fd leak</li>
@@ -49,9 +51,9 @@
                 <ul>
                     <li>(cat a & cabt b) > outfile</li>
                 </ul>
-                    <center>
+                    <div style="text-align:center;">
                         <img src="output_race_condition.png" alt="output race condition">
-                    </center>
+                    </div>
                     This gives us many possible outputs: <br>
                     
                     <pre>
@@ -68,10 +70,9 @@
                 <ul>
                     <li>(cat > a & cat > b) &lt; infile</li>
                 </ul>
-
-                    <center>
+                    <div style="text-align:center">
                         <img src="input_race_condition.png" alt="intput race condition">
-                    </center>
+                    </div>
 
                     <pre>
     |a| + |b| = |infile|
@@ -87,8 +88,8 @@
                 <h4> Task: rotate a log file </h4>
                     Our goal is to keep a log of all of Apache's activity.  In order to do this, we must keep two files, log and oldlog.  log contains all of the information for the current day while oldlog contains a copy of the log file from the previous day.  <br>
                     <br>
-                    log       <= apache writes to this endlessly<br>
-                    oldlog    <= yesterday's log<br>
+                    log       &lt;= apache writes to this endlessly<br>
+                    oldlog    &lt;= yesterday's log<br>
                     <br>
                     The tricky part (most prone to error) occurs when log must be transitioned to oldlog at midnight. <br>
                     <pre>
@@ -119,7 +120,7 @@ i.e.
                     <pre>
                         <code>
     int checklog(void) {
-        if(stat("log", &st) < 0 || st.st_size == 0) {
+        if(stat("log", &amp;st) &lt; 0 || st.st_size == 0) {
             close(fd);
             fd = open("log",...);
         }
@@ -160,9 +161,9 @@ i.e.
                             <td>interrupt ^C</td><td> &lt;= uncooperative process</td>
                         </tr>
                         <tr>
-                            <td>SIGHUP</td><td>hang up</td>
+                            <td>SIGHUP</td>
+                            <td>hang up</td>
                             <td>&lt;= unexpected loss of resources</td>
-                            <td></td>
                         </tr>
                         <tr>
                             <td>SIGSEGV</td>
@@ -175,9 +176,9 @@ i.e.
                             <td></td>
                         </tr>
                         <tr>
-                            <td>SIGFPE</td><td>floating point exception</td>
+                            <td>SIGFPE</td>
+                            <td>floating point exception</td>
                             <td> almost impossible to see nowadays</td>
-                            <td></td>
                         </tr>
                         <tr>
                             <td>SIGPIPE</td>
@@ -212,10 +213,10 @@ i.e.
                     <li>told hardware designers to make systems where floating point exceptions would not occur</li>
                     <li>hardware designers added handling such as INF-INF=NaN instead of triggering SIGFPE</li>
                     <li>still one way to get SIGFPE:</li>
+                </ul>
                     <pre>
     int x = INT_MIN / (-1);
                     </pre>
-                </ul>
                 <h4>Some more information about kill:</h4>
                 Kill is very useful.  If a process is behaving poorly, it can be killed in order to free the CPU to run meaningful processes.  An example of how kill might be used is seen below. 
                 <pre>
@@ -438,4 +439,4 @@ example:
 </div>
 </BODY>
 
-</HTML>
+</html>
