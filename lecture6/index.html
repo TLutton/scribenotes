@@ -101,6 +101,8 @@
                 </ul>
                 <br>
                     This would create a lot of race conditions since the behavior largely depends on the timing which affects both of the above examples.  
+                    The subshell on the left side of the pipe has a race condition because there is no guarantee which cat will output to the input end of the pipe.
+                    On the other hand, the cats in the subshell on the right side of the pipe fight each other to pull bytes from the output end of the pipe. 
                     Timing is innately variable and therefore very difficult to debug.  
                     The best way to debug a race condition is to not create one.  
                     In this lecture we will be examining ways of writing code in order to avoid race conditions and write safe code. 
