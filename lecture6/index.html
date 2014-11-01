@@ -59,6 +59,11 @@
                 <ul>
                     <li>(cat a & cat b) > outfile</li>
                 </ul>
+                In this example, the order that the cats will be run is unclear. 
+                Any of a variety of possible outputs could occur (as seen below).
+                It is possible that only one cat will write to the file or that both will attempt to write at the same time and cause interleaving.
+                Both of these outcomes are unacceptable. 
+                Another possible output is that the writes for each cat will be run to completion, but there is no guarantee which will occur first. 
                     <div style="text-align:center;">
                         <img src="output_race_condition.png" alt="output race condition">
                     </div>
@@ -78,6 +83,11 @@
                 <ul>
                     <li>(cat > a & cat > b) &lt; infile</li>
                 </ul>
+                This example is the same as the above example, but in the opposite direction. 
+                Since the two cat calls are sharing an input file, there is a race condition as to which cat gets which part of the input.
+                It is possible that each cat gets a portion which would create an unnaccpetably interleaved output across the two files a and b. 
+                It is also possible that one file (i.e. a) will get the entirety of infile. 
+
                     <div style="text-align:center">
                         <img src="input_race_condition.png" alt="intput race condition">
                     </div>
@@ -90,7 +100,10 @@
                     <li>(cat a & cat b) | (cat > c & cat > d) </li> 
                 </ul>
                 <br>
-                    This would create a lot of race conditions since the behavior largely depends on timing which means that it is variable and therefore very difficult to debug.  The best way to debug a race condition is to not create one.  In this lecture we will be examining ways of writing code in order to avoid race conditions and write safe code. 
+                    This would create a lot of race conditions since the behavior largely depends on the timing which affects both of the above examples.  
+                    Timing is innately variable and therefore very difficult to debug.  
+                    The best way to debug a race condition is to not create one.  
+                    In this lecture we will be examining ways of writing code in order to avoid race conditions and write safe code. 
 
 
                 <h4> Task: rotate a log file </h4>
